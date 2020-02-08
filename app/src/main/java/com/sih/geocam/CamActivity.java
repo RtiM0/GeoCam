@@ -137,8 +137,7 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
     protected void createLocationRequest() {
         stopwatch.start();
         mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(3000);
-        mLocationRequest.setFastestInterval(1500);
+        mLocationRequest.setInterval(2000);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(mLocationRequest);

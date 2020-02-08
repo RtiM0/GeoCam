@@ -15,12 +15,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.osmdroid.api.IMapController;
+import org.osmdroid.config.Configuration;
+import org.osmdroid.config.IConfigurationProvider;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 
-import java.io.File;
+import static org.osmdroid.tileprovider.util.StorageUtils.getStorage;
 
 public class PlaybackActivity extends AppCompatActivity implements VideoProgressCallback {
 
@@ -35,18 +37,24 @@ public class PlaybackActivity extends AppCompatActivity implements VideoProgress
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_playback);
+        String filepath = getIntent().getStringExtra("filepath");
+        String jsonpath = getIntent().getStringExtra("jsonpath");
         BetterVideoPlayer player = findViewById(R.id.vidplayer);
         osmmap = findViewById(R.id.mapper);
         Storage storage = new Storage(getApplicationContext());
         osmmap.setTileSource(TileSourceFactory.MAPNIK);
         osmmap.setMultiTouchControls(true);
+        IConfigurationProvider provider = Configuration.getInstance();
+        provider.setUserAgentValue(BuildConfig.APPLICATION_ID);
+        provider.setOsmdroidBasePath(getStorage());
+        provider.setOsmdroidTileCache(getStorage());
         debugo = findViewById(R.id.debugo);
-        player.setSource(Uri.fromFile(storage.getFile(storage.getExternalStorageDirectory() + File.separator + "GeoCam" + File.separator + "6.mp4")));
+        player.setSource(Uri.fromFile(storage.getFile(filepath)));
         player.enableControls();
         player.enableSwipeGestures();
         player.setProgressCallback(this);
         try {
-            data = new JSONArray(storage.readTextFile(storage.getExternalStorageDirectory() + File.separator + "GeoCam" + File.separator + "6.json"));
+            data = new JSONArray(storage.readTextFile(jsonpath));
         } catch (JSONException e) {
             e.printStackTrace();
         }

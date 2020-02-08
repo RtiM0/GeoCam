@@ -31,6 +31,7 @@ public class HomeFragment extends Fragment {
     private HomeViewModel homeViewModel;
     private ListView listView;
     private Storage storage;
+    private TextView textView;
     String FOLDER_PATH;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -38,7 +39,7 @@ public class HomeFragment extends Fragment {
         homeViewModel =
                 ViewModelProviders.of(this).get(HomeViewModel.class);
         View root = inflater.inflate(R.layout.fragment_home, container, false);
-        final TextView textView = root.findViewById(R.id.text_home);
+        textView = root.findViewById(R.id.text_home);
         homeViewModel.getText().observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(@Nullable String s) {
@@ -48,24 +49,7 @@ public class HomeFragment extends Fragment {
         storage = new Storage(getActivity().getApplicationContext());
         FOLDER_PATH = storage.getExternalStorageDirectory()+File.separator+"GeoCam";
         listView = root.findViewById(R.id.fileslist);
-        if(storage.isDirectoryExists(FOLDER_PATH)){
-            ArrayList<String> namelist = new ArrayList<>();
-            List<File> files = storage.getFiles(FOLDER_PATH);
-            for(int i = 0;i<files.size();i++){
-                namelist.add(files.get(i).getName());
-            }
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity().getApplicationContext(),R.layout.files_listview,namelist);
-            listView.setAdapter(adapter);
-            textView.setVisibility(View.GONE);
-            listView.setVisibility(View.VISIBLE);
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    Intent playa = new Intent(getActivity(), PlaybackActivity.class);
-                    startActivity(playa);
-                }
-            });
-        }
+        makeList();
         final Button button = root.findViewById(R.id.recordbutton);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -75,5 +59,42 @@ public class HomeFragment extends Fragment {
             }
         });
         return root;
+    }
+
+    private void makeList() {
+        if (storage.isDirectoryExists(FOLDER_PATH)) {
+            ArrayList<String> namelist = new ArrayList<>();
+            List<File> files = storage.getFiles(FOLDER_PATH);
+            for (int i = 0; i < files.size(); i++) {
+                namelist.add(files.get(i).getName());
+            }
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity().getApplicationContext(), R.layout.files_listview, namelist);
+            listView.setAdapter(adapter);
+            textView.setVisibility(View.GONE);
+            listView.setVisibility(View.VISIBLE);
+            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    String filename = files.get(position).getName();
+                    if (filename.contains(".mp4")) {
+                        Intent playa = new Intent(getActivity(), PlaybackActivity.class);
+                        playa.putExtra("filepath", files.get(position).getPath());
+                        for (int i = 0; i < files.size(); i++) {
+                            if ((files.get(i).getName()).equals((filename).replace(".mp4", ".json"))) {
+                                playa.putExtra("jsonpath", files.get(i).getPath());
+                                break;
+                            }
+                        }
+                        startActivity(playa);
+                    }
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        makeList();
     }
 }
