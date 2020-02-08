@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.location.LocationListener;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -40,7 +39,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -51,13 +49,14 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
     private CameraView camera;
     private int flag = 0;
     private Storage storage;
-    private String filename;
     private LocationRequest mLocationRequest;
     private LocationCallback mLocationCallback;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private Stopwatch stopwatch;
     private long uniTime;
     private JSONArray data = new JSONArray();
+    private File convention;
+    private String CONVENTION_PATH;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,9 +71,10 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
 
         storage = new Storage(getApplicationContext());
         storage.createDirectory(storage.getExternalStorageDirectory() + File.separator + "GeoCam");
+        CONVENTION_PATH = storage.getInternalFilesDirectory() + File.separator + "convention.txt";
 
-        if(!storage.isDirectoryExists(storage.getInternalFilesDirectory()+"convention.txt")){
-            File convention = new File(storage.getInternalFilesDirectory(),"convention.txt");
+        if (!storage.isDirectoryExists(CONVENTION_PATH)) {
+            convention = new File(CONVENTION_PATH);
             try {
                 FileOutputStream fileOutputStream = new FileOutputStream(convention);
                 fileOutputStream.write("0".getBytes());
@@ -89,13 +89,19 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
             @Override
             public void onVideoTaken(@NonNull VideoResult result) {
                 super.onVideoTaken(result);
-                filename = "" + Math.random();
-                storage.copy(result.getFile().getAbsolutePath(), (storage.getExternalStorageDirectory() + File.separator + "GeoCam" + File.separator + "video_" + filename + ".mp4"));
-                File saver = new File(storage.getExternalStorageDirectory() + File.separator + "GeoCam",filename+".json");
+                String convent = storage.readTextFile(CONVENTION_PATH);
+                int conv = Integer.parseInt(convent) + 1;
+                storage.move(result.getFile().getAbsolutePath(), (storage.getExternalStorageDirectory() + File.separator + "GeoCam" + File.separator + conv + ".mp4"));
+                File saver = new File(storage.getExternalStorageDirectory() + File.separator + "GeoCam", conv + ".json");
                 try {
                     FileOutputStream fileOutputStream = new FileOutputStream(saver);
                     fileOutputStream.write(data.toString().getBytes());
                     fileOutputStream.close();
+                    convention = new File(CONVENTION_PATH);
+                    FileOutputStream fileOutputStream1 = new FileOutputStream(convention);
+                    fileOutputStream1.write((conv + "").getBytes());
+                    fileOutputStream1.close();
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
