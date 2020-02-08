@@ -2,27 +2,25 @@ package com.sih.geocam.ui.home;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import androidx.annotation.Nullable;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
 
 import com.sih.geocam.CamActivity;
-import com.sih.geocam.FilesAdapter;
-import com.sih.geocam.MainActivity;
+import com.sih.geocam.PlaybackActivity;
 import com.sih.geocam.R;
 import com.snatik.storage.Storage;
-import com.snatik.storage.helpers.OrderType;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -60,6 +58,13 @@ public class HomeFragment extends Fragment {
             listView.setAdapter(adapter);
             textView.setVisibility(View.GONE);
             listView.setVisibility(View.VISIBLE);
+            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    Intent playa = new Intent(getActivity(), PlaybackActivity.class);
+                    startActivity(playa);
+                }
+            });
         }
         final Button button = root.findViewById(R.id.recordbutton);
         button.setOnClickListener(new View.OnClickListener() {
