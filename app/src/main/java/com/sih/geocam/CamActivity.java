@@ -5,7 +5,6 @@ import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -25,8 +24,6 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.location.SettingsClient;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.otaliastudios.cameraview.CameraListener;
 import com.otaliastudios.cameraview.CameraView;
@@ -52,6 +49,7 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
     private LocationRequest mLocationRequest;
     private LocationCallback mLocationCallback;
     private FusedLocationProviderClient mFusedLocationProviderClient;
+    private Boolean canStartRecording = false;
     private Stopwatch stopwatch;
     private long uniTime;
     private JSONArray data = new JSONArray();
@@ -83,7 +81,6 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
                 e.printStackTrace();
             }
         }
-
         camera.setLifecycleOwner(this);
         camera.addCameraListener(new CameraListener() {
             @Override
@@ -101,41 +98,44 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
                     FileOutputStream fileOutputStream1 = new FileOutputStream(convention);
                     fileOutputStream1.write((conv + "").getBytes());
                     fileOutputStream1.close();
-
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                createLocationRequest();
             }
 
             @Override
             public void onVideoRecordingStart() {
                 super.onVideoRecordingStart();
-                createLocationRequest();
+                if (canStartRecording) {
+                    stopwatch.start();
+                    startLocationUpdates();
+                } else {
+                    Toast.makeText(CamActivity.this, "Failed to make Location Request", Toast.LENGTH_SHORT).show();
+                }
             }
 
             @Override
             public void onVideoRecordingEnd() {
                 super.onVideoRecordingEnd();
+                stopwatch.stop();
                 stopLocationUpdates();
+                canStartRecording = false;
             }
         });
-
+        createLocationRequest();
         rec = findViewById(R.id.recbtn);
-        rec.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (flag == 0) {
-                    camera.takeVideo(new File(getFilesDir(), "video.mp4"));
-                    flag = 1;
-                } else {
-                    camera.stopVideo();
-                    flag = 0;
-                }
+        rec.setOnClickListener(v -> {
+            if (flag == 0) {
+                camera.takeVideo(new File(getFilesDir(), "video.mp4"));
+                flag = 1;
+            } else {
+                camera.stopVideo();
+                flag = 0;
             }
         });
     }
     protected void createLocationRequest() {
-        stopwatch.start();
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(2000);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
@@ -143,53 +143,33 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
                 .addLocationRequest(mLocationRequest);
         SettingsClient client = LocationServices.getSettingsClient(this);
         Task<LocationSettingsResponse> task = client.checkLocationSettings(builder.build());
-        task.addOnSuccessListener(this, new OnSuccessListener<LocationSettingsResponse>() {
-
-            @Override
-
-            public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
-
-                // All location settings are satisfied. The client can initialize
-
-                // location requests here.
-
-                // ...
-                startLocationUpdates();
-            }
-
+        task.addOnSuccessListener(this, locationSettingsResponse -> {
+            // All location settings are satisfied. The client can initialize
+            // location requests here.
+            // ...
+            Toast.makeText(CamActivity.this, "Successfully Initialized Location Client", Toast.LENGTH_SHORT).show();
+            canStartRecording = true;
         });
-        task.addOnFailureListener(this, new OnFailureListener() {
-
-            @Override
-
-            public void onFailure(@NonNull Exception e) {
-                int statusCode = ((ApiException) e).getStatusCode();
-                switch (statusCode) {
-                    case CommonStatusCodes.RESOLUTION_REQUIRED:
-
-                        // Location settings are not satisfied, but this can be fixed
-
-                        // by showing the user a dialog.
-
-                        try {
-
-                            // Show the dialog by calling startResolutionForResult(),
-
-                            // and check the result in onActivityResult().
-
-                            ResolvableApiException resolvable = (ResolvableApiException) e;
-                            resolvable.startResolutionForResult(CamActivity.this, 1);
-                        } catch (IntentSender.SendIntentException sendEx) {
-                            // Ignore the error.
-                        }
-                        break;
-                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                        // Location settings are not satisfied. However, we have no way
-                        // to fix the settings so we won't show the dialog.
-                        break;
-                }
+        task.addOnFailureListener(this, e -> {
+            int statusCode = ((ApiException) e).getStatusCode();
+            switch (statusCode) {
+                case CommonStatusCodes.RESOLUTION_REQUIRED:
+                    // Location settings are not satisfied, but this can be fixed
+                    // by showing the user a dialog.
+                    try {
+                        // Show the dialog by calling startResolutionForResult(),
+                        // and check the result in onActivityResult().
+                        ResolvableApiException resolvable = (ResolvableApiException) e;
+                        resolvable.startResolutionForResult(CamActivity.this, 1);
+                    } catch (IntentSender.SendIntentException sendEx) {
+                        // Ignore the error.
+                    }
+                    break;
+                case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                    // Location settings are not satisfied. However, we have no way
+                    // to fix the settings so we won't show the dialog.
+                    break;
             }
-
         });
     }
     private void startLocationUpdates() {
@@ -214,36 +194,23 @@ public class CamActivity extends AppCompatActivity implements Stopwatch.OnTickLi
             }
         };
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
             // TODO: Consider calling
-
             //    ActivityCompat#requestPermissions
-
             // here to request the missing permissions, and then overriding
-
             //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-
             //                                          int[] grantResults)
-
             // to handle the case where the user grants the permission. See the documentation
-
             // for ActivityCompat#requestPermissions for more details.
-
             Toast.makeText(getApplicationContext(), "location permission required !!", Toast.LENGTH_SHORT).show();
-
             return;
-
         }
         mFusedLocationProviderClient.requestLocationUpdates(mLocationRequest,
-
                 mLocationCallback,
-
                 null /* Looper */);
     }
 
     private void stopLocationUpdates() {
         mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback);
-        stopwatch.stop();
     }
 
     @Override

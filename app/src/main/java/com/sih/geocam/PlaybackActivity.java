@@ -28,10 +28,10 @@ public class PlaybackActivity extends AppCompatActivity implements VideoProgress
 
     private MapView osmmap;
     private JSONArray data;
-    private int temptime = 0;
-    private int index = 0;
     private TextView debugo;
+    private BetterVideoPlayer player;
     private IMapController iMapController;
+    private Double latitude[], longitude[];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,7 +39,7 @@ public class PlaybackActivity extends AppCompatActivity implements VideoProgress
         setContentView(R.layout.activity_playback);
         String filepath = getIntent().getStringExtra("filepath");
         String jsonpath = getIntent().getStringExtra("jsonpath");
-        BetterVideoPlayer player = findViewById(R.id.vidplayer);
+        player = findViewById(R.id.vidplayer);
         osmmap = findViewById(R.id.mapper);
         Storage storage = new Storage(getApplicationContext());
         osmmap.setTileSource(TileSourceFactory.MAPNIK);
@@ -59,27 +59,77 @@ public class PlaybackActivity extends AppCompatActivity implements VideoProgress
             e.printStackTrace();
         }
         iMapController = osmmap.getController();
-        Log.d("onCreate: ", data.toString());
-    }
-
-    @Override
-    public void onProgressUpdate(int i, int i1) {
-        int playerpos = i / 1000;
+        iMapController.setZoom(20);
         try {
-            JSONObject temp = data.getJSONObject(index);
-            if ((playerpos + "").equals(temp.getString("time"))) {
-                debugo.setText((temp.getString("latitude") + "," + temp.getString("longitude")));
-                index++;
-                GeoPoint startPoint = new GeoPoint(temp.getDouble("latitude"), temp.getDouble("longitude"));
-                iMapController.setCenter(startPoint);
-                iMapController.setZoom(15.0);
-                Marker startMarker = new Marker(osmmap);
-                startMarker.setPosition(startPoint);
-                startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-                osmmap.getOverlays().add(startMarker);
-            }
+            createDataArray();
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        Log.d("onCreate: ", data.toString());
+    }
+
+    private void createDataArray() throws JSONException {
+        int time = player.getDuration() / 1000;
+        int in = 0;
+        latitude = new Double[time];
+        longitude = new Double[time];
+        for (int i = 0; i <= time; i++) {
+            JSONObject temp = data.getJSONObject(in);
+            if (temp.getInt("time") == i) {
+                latitude[i] = temp.getDouble("latitude");
+                longitude[i] = temp.getDouble("longitude");
+                in++;
+                try {
+                    while (data.getJSONObject(in).getInt("time") == temp.getInt("time")) {
+                        in++;
+                    }
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void setOnMap(GeoPoint geoPoint, boolean animate) {
+        if (animate) {
+            iMapController.animateTo(geoPoint);
+        } else {
+            iMapController.setCenter(geoPoint);
+        }
+        Marker startMarker = new Marker(osmmap);
+        startMarker.setPosition(geoPoint);
+        startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        osmmap.getOverlays().clear();
+        osmmap.getOverlays().add(startMarker);
+        osmmap.postInvalidate();
+    }
+    @Override
+    public void onProgressUpdate(int i, int i1) {
+        int playerpos = i / 1000;
+        if (latitude[playerpos] != null) {
+            debugo.setText((latitude[playerpos] + "," + longitude[playerpos]));
+            GeoPoint startPoint = new GeoPoint(latitude[playerpos], longitude[playerpos]);
+            setOnMap(startPoint, true);
+        }
+//        try {
+//            JSONObject temp = data.getJSONObject(index);
+//            if ((playerpos + "").equals(temp.getString("time"))) {
+//                debugo.setText((temp.getString("latitude") + "," + temp.getString("longitude")));
+//                index++;
+//                GeoPoint startPoint = new GeoPoint(temp.getDouble("latitude"), temp.getDouble("longitude"));
+//                if (index == 1) {
+//                    iMapController.setCenter(startPoint);
+//                } else {
+//                    iMapController.animateTo(startPoint);
+//                }
+//                Marker startMarker = new Marker(osmmap);
+//                startMarker.setPosition(startPoint);
+//                startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+//                osmmap.getOverlays().clear();
+//                osmmap.getOverlays().add(startMarker);
+//            }
+//        } catch (JSONException e) {
+//            e.printStackTrace();
+//        }
     }
 }
